@@ -622,11 +622,14 @@ void loop() {
       if(bio_post_heaters[i][2] == 2) {
         RLHTRequestThermo(bio_post_heaters[i][0], &(temp), &(bio_thermo_val[i+2]));
         //(int address, byte heater, float Ku,float setpoint, float temp, float time)
-        
-        RLHTCommandPIDAuto(bio_post_heaters[i][0], bio_post_heaters[i][1],bio_post_heater_pid[i][1],bio_post_heater_pid[i][0],bio_thermo_val[4],timerReadSeconds(timer));
-        //if not oscillating...
-        if (checkOsc == 0) {
-          timerRestart(timer);
+        //running for dryer only 
+        if (i == 1)
+        {
+            RLHTCommandPIDAuto(bio_post_heaters[1][0], bio_post_heaters[1][1],bio_post_heater_pid[1][1],bio_post_heater_pid[1][0],bio_thermo_val[3],timerReadSeconds(timer));
+           //if not oscillating...
+        // if (checkOsc == 0) {
+        //   timerRestart(timer);
+        // }
         }
         //RLHTCommandSetpoint(bio_post_heaters[index][0], bio_post_heaters[index][1], bio_post_heater_pid[index][0], bio_post_heaters[index][2], bio_post_heaters[index][3]);
       }
@@ -757,20 +760,65 @@ void RLHTCommandSetpoint(int address, byte heater, float heatSetpoint, byte ther
  */
 void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float temp, double time)
 {
-
-
+  float tmp = bio_post_heater_pid[1][1];
+  Serial.print("Current Kp: ");
+  Serial.println(tmp);
+  Serial.print("time");
+  Serial.println(time);
+  Serial.println("temp: ");
+  Serial.println(temp);
+  Serial.print("setpoint: ");
+  Serial.println(setpoint);
+  Serial.println("temp bio: ");
+  for (int i = 0; i < 4; i++)
+    {
+      Serial.print(bio_thermo_val[i]);
+      Serial.print(" ");
+    }
+  Serial.println();
+  // Serial.println("temp pyro: ");
+  // for (int i = 0; i < 9; i++)
+  // {
+  //   Serial.print(pyro_thermo_val[i]);
+  //   Serial.print(" ");
+  // }
+  // Serial.println("temp chem: ");
+  // for (int i = 0; i < 2; i++)
+  // {
+  //   Serial.print(chem_thermo_val[i]);
+  //   Serial.print(" ");
+  // }
+  //if its the first time entering , set time to current time
+  if(bio_post_heater_auto[2] == 0 && autoCheck == 1)
+  {
+    Serial.println("Time set");
+    bio_post_heater_auto[2] = time;
+  }
 //we could just increase the gain super slowly
-  if (autoCheck == 1)
+  if (autoCheck == 1 && time - bio_post_heater_auto[2] > 20)
   {
     //((current T - previous T) / (current time - previous timee))
     double driv = (temp - bio_post_heater_auto[1])/(time - bio_post_heater_auto[2]);
+    
+    Serial.print("currentTemp: ");
+    Serial.println(temp);
+    Serial.print("Deriv: ");
+    Serial.println(driv);
+    Serial.print("prevDeriv: ");
+    Serial.println(bio_post_heater_auto[4]);
+    Serial.print("setpoint: ");
+    Serial.println(setpoint);
+    Serial.print("Max Temp: ");
+    Serial.println(bio_post_heater_auto[0]);
+    
     //if T is less than 2% of Setpoint and the derivative is decreasing and it isn't oscillating...
     if ((temp < setpoint - (setpoint * 0.02)) && driv - bio_post_heater_auto[4] < 0 && checkOsc == 0)
     {
         //double Ku and send new gains
-        Ku = Ku * 2;
-        RLHTCommandPID(address, heater, Ku, 0, 0);
-      
+        bio_post_heater_pid[1][1] = Ku * 2;
+        RLHTCommandPID(address, heater, bio_post_heater_pid[1][1], 0, 0);
+        Serial.print("Kp Change: ");
+        Serial.println(bio_post_heater_pid[1][1]); 
     }
     else
     {
@@ -789,20 +837,26 @@ void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float
       //If max observed T is larger than new and we have not found the first peak, set it as the first peak
       if(bio_post_heater_auto[0] > temp && peak == 0){
         bio_post_heater_auto[3] = bio_post_heater_auto[0];
+        bio_post_heater_auto[0] = 0;
         peak = 1;
+        Serial.println("first peak");
         timerRestart(timer);
       }
       //If max observed T is larger than new and we have found the first peak...
       else if (bio_post_heater_auto[0] > temp && peak == 1){
         //Find the delta between the secondpeak-firstpeak
         float delp = bio_post_heater_auto[0]-bio_post_heater_auto[3];
+        Serial.print("peak 1 temp: ");
+        Serial.println(bio_post_heater_auto[3]);
+        Serial.print("delp: ");
+        Serial.println(delp);
         //If the delta is greater than 0, change Ku
         if(delp > 0){
-          Ku = (Ku / 1.5); //or Ku - (Ku/2)
+          bio_post_heater_pid[1][1] = (Ku / 1.5); //or Ku - (Ku/2)
         }
         else{
           float time = timerReadSeconds(timer);
-          RLHTCommandPID(address, heater, 0.6*Ku, (1.2*Ku)/time, 0.075*Ku*time);
+          RLHTCommandPID(address, heater, 0.6*bio_post_heater_pid[1][1], (1.2*bio_post_heater_pid[1][1])/time, 0.075*bio_post_heater_pid[1][1]*time);
           checkOsc = 0;
           autoCheck = 0;
           timerStop(timer);

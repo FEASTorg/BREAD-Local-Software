@@ -15,11 +15,13 @@ Get pH or DO readings:        float PHDORequest(int address)
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
+
 #include "SD.h"
 #include "FS.h"
 #include "SPI.h"
 #include <Wire.h>
 
+#include <esp32-hal-timer.h>
 #include <ESP32Time.h>
 ESP32Time rtc;
 
@@ -135,7 +137,7 @@ float bio_thermo_val[4] = {0,0,0,0};
 uint8_t autoCheck = 0;
 uint8_t checkOsc = 0;
 uint8_t peak = 0;
-hw_timer_t *timer = NULL;
+hw_timer_t *timer = timerBegin(0, 80, true);
 float bio_post_heater_auto[5] = {0,0,0,0,0}; // {maxTemp, prevTemp, prevTime, Peak1, prevDeriv}
 
 // This is for data to be sent to the website for display to the operator

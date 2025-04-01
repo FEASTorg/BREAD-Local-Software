@@ -516,6 +516,15 @@
                         ">Push Data</button>
                     </form>
                     <br>
+                    <div>
+                        <label>Calculated kP: </label>
+                        <p id="bio-pro-guage1-calc-kp">0.0</p>
+                        <label>Calculated kI: </label>
+                        <p id="bio-pro-guage1-calc-ki">0.0</p>
+                        <label>Calculated k: </label>
+                        <p id="bio-pro-guage1-calc-kd">0.0</p>
+                    </div>
+                    <br>
                     <form action="/form-submit" method="POST" target="target">
                         <label>Autotune Initial Kp:</label>
                         <input type="number" step="0.01" name="Pa2" id="bio-pro-gauge2-pk-init">
@@ -1334,10 +1343,16 @@
         "bio-pro-gauge1": {
             title: "Pasteurization",
             value: 0,
+            calculated_kP: 0.0,
+            calculated_kI: 0.0,
+            calculated_kD: 0.0,
         },
         "bio-pro-gauge2": {
             title: "Dryer",
             value: 0,
+            calculated_kP: 0.0,
+            calculated_kI: 0.0,
+            calculated_kD: 0.0,
         },
     }
     var motorGaugeInfo = {
@@ -1730,6 +1745,9 @@
             bioGaugeInfo["bio-turbidity-gauge2"].value = bioVals[8]
             bioGaugeInfo["bio-pro-gauge1"].value = bioVals[9]
             bioGaugeInfo["bio-pro-gauge2"].value = bioVals[10]
+            bioGaugeInfo["bio-pro-gauge2"].calculated_kP = bioVals[11]
+            bioGaugeInfo["bio-pro-gauge2"].calculated_kI = bioVals[12]
+            bioGaugeInfo["bio-pro-gauge2"].calculated_kD = bioVals[13]
 
             updateBioPhGauge("bio-ph-gauge1")
             updateBioPhGauge("bio-ph-gauge2")
@@ -1966,6 +1984,10 @@
             }
         }
         Plotly.restyle(gaugeID, new_thermo_gauge)
+
+        document.getElementById(id+"-kp").innerHTML = bioGaugeInfo[gaugeID].calculated_kP;
+        document.getElementById(id+"-ki").innerHTML = bioGaugeInfo[gaugeID].calculated_kI;
+        document.getElementById(id+"-kd").innerHTML = bioGaugeInfo[gaugeID].calculated_kD;
     }
 
     function downloadCSVFile(url, filename) {

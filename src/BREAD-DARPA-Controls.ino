@@ -138,6 +138,8 @@ uint8_t peak = 0;
 hw_timer_t *timer = NULL;
 float bio_post_heater_auto[5] = {0,0,0,0,0}; // {maxTemp, prevTemp, prevTime, Peak1, prevDeriv}
 
+// This is for data to be sent to the website for display to the operator
+float bio_heater_auto_pid_vals[3] = {0,0,0}; // {kP, kI, kD} 
 
 int bio_ph[2][2] = {      // bioreactor pH layout {PHDO address, DCMT address}
   {98, 20},
@@ -474,7 +476,6 @@ Chem Decon Commands:
       } else {
         toServer += "not logging-";
       }
-           
       for(uint8_t x = 0; x < 10; x++) {
         toServer += (
           String(pyro_heater_pid[x][0]) + "|" +   // setpoint
@@ -657,6 +658,10 @@ void loop() {
       bioToServer += "," + String(bio_thermo_val[n]) + "," + String(bio_ph_val[n][0]) + "," + String(bio_do_val[n]) + "," + String(bio_turbidity_val[n]);
     }
     bioToServer += "," + String(bio_thermo_val[2]) + "," + String(bio_thermo_val[3]);
+    // Push the data from the PID auto to the website
+    for (uint8_t i = 0; i < 3; i++) {
+      bioToServer += "," + String(bio_heater_auto_pid_vals[i]);
+    }
     for(uint8_t n = 0; n < 2; n++) {
       chemToServer += "," + String(chem_thermo_val[n]);
     }
@@ -678,7 +683,7 @@ Chemreactor:
     events.send(bioToServer.c_str(), "bioreactor-readings", millis());
     events.send(chemToServer.c_str(), "chemreactor-readings", millis());
     
-    //log onto the SD card
+    //log data the SD card
     if(logging){
       appendFile(SD, "/pyrolysis-data.csv", "\r\n" + pyrolysisToServer);
       appendFile(SD, "/bioreactor-data.csv", "\r\n" + bioToServer);
@@ -812,7 +817,7 @@ void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float
     Serial.println(bio_post_heater_auto[0]);
     
     //if T is less than 2% of Setpoint and the derivative is decreasing and it isn't oscillating...
-    if ((temp < setpoint - (setpoint * 0.02)) && driv - bio_post_heater_auto[4] < 0 && checkOsc == 0)
+    if ((temp < setpoint - (setpoint * 0.02)) && driv < 0.02 && checkOsc == 0)
     {
         //double Ku and send new gains
         bio_post_heater_pid[1][1] = Ku * 2;
@@ -820,7 +825,7 @@ void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float
         Serial.print("Kp Change: ");
         Serial.println(bio_post_heater_pid[1][1]); 
     }
-    else
+    else if(temp > setpoint || checkOsc == 1)
     {
       //check for oscillations
       checkOsc = 1;
@@ -841,6 +846,8 @@ void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float
         peak = 1;
         Serial.println("first peak");
         timerRestart(timer);
+        bio_post_heater_auto[2] = 0;
+        Serial.println("time reset");
       }
       //If max observed T is larger than new and we have found the first peak...
       else if (bio_post_heater_auto[0] > temp && peak == 1){
@@ -853,16 +860,27 @@ void RLHTCommandPIDAuto(int address, byte heater, float Ku,float setpoint, float
         //If the delta is greater than 0, change Ku
         if(delp > 0){
           bio_post_heater_pid[1][1] = (Ku / 1.5); //or Ku - (Ku/2)
+          RLHTCommandPID(address, heater,bio_post_heater_pid[1][1],0,0);
         }
         else{
           float time = timerReadSeconds(timer);
-          RLHTCommandPID(address, heater, 0.6*bio_post_heater_pid[1][1], (1.2*bio_post_heater_pid[1][1])/time, 0.075*bio_post_heater_pid[1][1]*time);
+          //reset Command
+          RLHTCommandPID(address, heater, 0, 0, 0);
+          //add values to
+          bio_heater_auto_pid_vals[0] = 0.6*bio_post_heater_pid[1][1];
+          bio_heater_auto_pid_vals[1] = (1.2*bio_post_heater_pid[1][1])/time;
+          bio_heater_auto_pid_vals[2] = 0.075*bio_post_heater_pid[1][1]*time;
           checkOsc = 0;
           autoCheck = 0;
           timerStop(timer);
+          bio_post_heater_auto[2] = 0;
+          Serial.println("hit");
         }
       }
     }
+    // if(bio_post_heater_auto[2] != 0){
+    //   bio_post_heater_auto[2] = time;
+    // }
     //saving old time, temp, and dericative
     bio_post_heater_auto[1] = temp;
     bio_post_heater_auto[2] = time;

@@ -518,11 +518,11 @@
                     <br>
                     <div>
                         <label>Calculated kP: </label>
-                        <p id="bio-pro-guage1-calc-kp">0.0</p>
+                        <p id="bio-pro-guage2-calc-kp">0.0</p>
                         <label>Calculated kI: </label>
-                        <p id="bio-pro-guage1-calc-ki">0.0</p>
+                        <p id="bio-pro-guage2-calc-ki">0.0</p>
                         <label>Calculated k: </label>
-                        <p id="bio-pro-guage1-calc-kd">0.0</p>
+                        <p id="bio-pro-guage2-calc-kd">0.0</p>
                     </div>
                     <br>
                     <form action="/form-submit" method="POST" target="target">
@@ -1985,9 +1985,9 @@
         }
         Plotly.restyle(gaugeID, new_thermo_gauge)
 
-        document.getElementById(gaugeID+"-kp").innerHTML = bioGaugeInfo[gaugeID].calculated_kP;
-        document.getElementById(gaugeID+"-ki").innerHTML = bioGaugeInfo[gaugeID].calculated_kI;
-        document.getElementById(gaugeID+"-kd").innerHTML = bioGaugeInfo[gaugeID].calculated_kD;
+        document.getElementById(gaugeID+"-calc-kp").innerHTML = bioGaugeInfo[gaugeID].calculated_kP;
+        document.getElementById(gaugeID+"-calc-ki").innerHTML = bioGaugeInfo[gaugeID].calculated_kI;
+        document.getElementById(gaugeID+"-calc-kd").innerHTML = bioGaugeInfo[gaugeID].calculated_kD;
     }
 
     function downloadCSVFile(url, filename) {
